@@ -239,13 +239,13 @@ class HaScreen extends ConsumerWidget {
               Expanded(
                 child: renaud != null
                     ? _PersonCard(entity: renaud)
-                    : _PersonCardPlaceholder(name: 'Renaud'),
+                    : const _PersonCardPlaceholder(name: 'Renaud'),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: gaelle != null
                     ? _PersonCard(entity: gaelle)
-                    : _PersonCardPlaceholder(name: 'Gaëlle'),
+                    : const _PersonCardPlaceholder(name: 'Gaëlle'),
               ),
             ],
           ),

@@ -99,7 +99,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final shortcuts = ref.watch(enabledShortcutsProvider);
     final health = ref.watch(healthProvider);
     final settings = ref.watch(settingsProvider);
-    final networkMode = ref.watch(servicesProvider).networkMode;
     final beszel = ref.watch(beszelProvider);
     final cameras = ref.watch(enabledCamerasProvider);
     final quickActions = ref.watch(enabledQuickActionsProvider);
