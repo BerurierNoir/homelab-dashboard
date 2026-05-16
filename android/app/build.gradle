@@ -1,0 +1,65 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader("UTF-8") { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def flutterVersionCode = localProperties.getProperty("flutter.versionCode") ?: "1"
+def flutterVersionName = localProperties.getProperty("flutter.versionName") ?: "1.0"
+
+android {
+    namespace "com.homelab.homelab_dashboard"
+    compileSdk 36
+    ndkVersion flutter.ndkVersion
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+
+    defaultConfig {
+        applicationId "com.homelab.homelab_dashboard"
+        minSdk 24
+        targetSdk 35
+        versionCode flutterVersionCode.toInteger()
+        versionName flutterVersionName
+    }
+
+    signingConfigs {
+        release {
+            def ksFile = System.getenv("KEYSTORE_PATH")
+            def ksStore = System.getenv("KEYSTORE_STORE_PASSWORD")
+            def ksAlias = System.getenv("KEYSTORE_KEY_ALIAS")
+            def ksKey   = System.getenv("KEYSTORE_KEY_PASSWORD")
+            if (ksFile && ksStore && ksAlias && ksKey) {
+                storeFile     file(ksFile)
+                storePassword ksStore
+                keyAlias      ksAlias
+                keyPassword   ksKey
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            def hasReleaseSigning = System.getenv("KEYSTORE_PATH") != null
+            signingConfig hasReleaseSigning ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+}
+
+flutter {
+    source "../.."
+}
