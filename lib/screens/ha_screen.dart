@@ -5,6 +5,7 @@ import '../models/ha_entity.dart';
 import '../providers/ha_provider.dart';
 import '../widgets/ha_entity_card.dart';
 import '../widgets/ha_action_button.dart';
+import '../widgets/ha_camera_card.dart';
 import 'settings/settings_ha.dart';
 
 class HaScreen extends ConsumerWidget {
@@ -42,6 +43,8 @@ class HaScreen extends ConsumerWidget {
                   else ...[
                     // ── Présence & Alarme ──────────────────────
                     SliverToBoxAdapter(child: _buildPresenceSection(haState, ref)),
+                    // ── Caméra ─────────────────────────────────
+                    SliverToBoxAdapter(child: _buildCameraSection(config)),
                     // ── Météo ──────────────────────────────────
                     SliverToBoxAdapter(child: _buildMeteoSection(haState)),
                     // ── Actions rapides ────────────────────────
@@ -233,11 +236,17 @@ class HaScreen extends ConsumerWidget {
         children: [
           Row(
             children: [
-              if (renaud != null)
-                Expanded(child: _PersonCard(entity: renaud)),
+              Expanded(
+                child: renaud != null
+                    ? _PersonCard(entity: renaud)
+                    : _PersonCardPlaceholder(name: 'Renaud'),
+              ),
               const SizedBox(width: 10),
-              if (gaelle != null)
-                Expanded(child: _PersonCard(entity: gaelle)),
+              Expanded(
+                child: gaelle != null
+                    ? _PersonCard(entity: gaelle)
+                    : _PersonCardPlaceholder(name: 'Gaëlle'),
+              ),
             ],
           ),
           if (alarme != null) ...[
@@ -245,6 +254,21 @@ class HaScreen extends ConsumerWidget {
             _AlarmCard(entity: alarme),
           ],
         ],
+      ),
+    );
+  }
+
+  // ── CAMÉRA ───────────────────────────────────────────────
+
+  Widget _buildCameraSection(HaConfig config) {
+    if (!config.isConfigured) return const SizedBox.shrink();
+    return _Section(
+      title: 'SURVEILLANCE',
+      titleColor: const Color(0xFF00D4FF),
+      child: HaCameraCard(
+        baseUrl: config.url,
+        token: config.token,
+        entityId: HaEntities.camera,
       ),
     );
   }
@@ -943,6 +967,45 @@ class _ErrorSection extends StatelessWidget {
             error,
             style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12),
             textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PersonCardPlaceholder extends StatelessWidget {
+  final String name;
+  const _PersonCardPlaceholder({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: const Color(0xFF13132E),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: Colors.white.withValues(alpha: 0.05),
+            child: Text(
+              name[0],
+              style: const TextStyle(color: Colors.white38, fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: const TextStyle(color: Colors.white54, fontSize: 13, fontWeight: FontWeight.w700)),
+                const Text('Non configuré', style: TextStyle(color: Colors.white24, fontSize: 11)),
+              ],
+            ),
           ),
         ],
       ),
