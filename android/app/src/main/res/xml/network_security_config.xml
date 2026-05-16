@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- HTTPS partout par défaut (Nabu Casa, Tailscale) -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- HTTP autorisé sur le réseau local uniquement -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">192.168.0.0</domain>
+        <domain includeSubdomains="true">192.168.1.0</domain>
+        <domain includeSubdomains="true">10.0.0.0</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <domain includeSubdomains="true">172.16.0.0</domain>
+        <!-- Tailscale range -->
+        <domain includeSubdomains="true">100.64.0.0</domain>
+        <!-- Toutes les IPs locales en /8 /16 /24 -->
+        <domain includeSubdomains="true">localhost</domain>
+    </domain-config>
+
+    <!-- Nabu Casa : HTTPS avec certificats système -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">nabu.casa</domain>
+        <domain includeSubdomains="true">ui.nabu.casa</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+</network-security-config>

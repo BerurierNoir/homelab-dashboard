@@ -1,0 +1,90 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Flutter (stable)
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      # flutter create fills in any missing Android boilerplate
+      # (build.gradle files, launcher icons, MainActivity…) without
+      # overwriting files that already exist in the repo.
+      - name: Scaffold missing Android platform files
+        run: |
+          flutter create \
+            --project-name homelab_dashboard \
+            --org com.homelab \
+            --platforms android \
+            . 2>&1 | grep -v "^  " || true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze Dart code
+        run: flutter analyze --no-fatal-infos
+
+      - name: Build release APK
+        run: flutter build apk --release --no-tree-shake-icons
+
+      - name: Rename APK with build date
+        run: |
+          DATE=$(date +%Y%m%d)
+          cp build/app/outputs/flutter-apk/app-release.apk \
+             build/app/outputs/flutter-apk/homelab-dashboard-v${DATE}.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: homelab-apk
+          path: build/app/outputs/flutter-apk/homelab-dashboard-v*.apk
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: "HomeLab Dashboard v${{ github.run_number }}"
+          body: |
+            ## HomeLab Dashboard
+
+            Build automatique du ${{ github.event.head_commit.timestamp }}
+            Commit : `${{ github.sha }}`
+
+            ### Installation
+            1. Téléchargez le fichier `.apk` ci-dessous
+            2. Transférez-le sur votre téléphone Android
+            3. **Paramètres → Sécurité → Autoriser les sources inconnues**
+            4. Ouvrez l'APK → Installer
+
+            ### Prérequis
+            - **Tailscale actif** sur le téléphone pour accéder au homelab
+            - Android 7.0+ (API 24)
+          files: build/app/outputs/flutter-apk/homelab-dashboard-v*.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
