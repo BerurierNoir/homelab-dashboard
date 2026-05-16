@@ -85,6 +85,16 @@ class HaEntities {
   static const printTimeLeft = 'sensor.ender3v2wap_print_time_left_2';
   static const googleHome = 'media_player.googlehome7806';
 
+  // Entités manquantes ajoutées
+  static const visiophoneImage = 'image.visiophone_exterieur_derniere_image_du_mouvement';
+  static const visiophoneMoniteur = 'alarm_control_panel.visiophone_moniteur';
+  static const cameraImprimante = 'camera.ender3v2wap_camera_print_2';
+  static const epicDeals = 'calendar.epic_games_store_jeux_a_prix_reduits';
+  static const capteurPortailGarage = 'binary_sensor.capteur_ouverture_portail_garage_contact';
+  static const capteurPortailExt = 'binary_sensor.portail_ouverture_exterieur_contact';
+  static const capteurPorteGarage = 'binary_sensor.capteur_ouverture_porte_garage_contact';
+  static const capteurFenetreGarage = 'binary_sensor.capteur_ouverture_fenetre_garage_contact';
+
   static const List<String> allEntities = [
     presenceRenaud,
     presenceGaelle,
@@ -105,8 +115,14 @@ class HaEntities {
     steam,
     xbox,
     epicGames,
+    epicDeals,
     imprimante3D,
     printTimeLeft,
     googleHome,
+    visiophoneMoniteur,
+    capteurPortailGarage,
+    capteurPortailExt,
+    capteurPorteGarage,
+    capteurFenetreGarage,
   ];
 }

@@ -42,7 +42,7 @@ class HaScreen extends ConsumerWidget {
                     SliverToBoxAdapter(child: _ErrorSection(error: haState.error!))
                   else ...[
                     // ── Présence & Alarme ──────────────────────
-                    SliverToBoxAdapter(child: _buildPresenceSection(haState, ref)),
+                    SliverToBoxAdapter(child: _buildPresenceSection(haState, ref, config)),
                     // ── Caméra ─────────────────────────────────
                     SliverToBoxAdapter(child: _buildCameraSection(config)),
                     // ── Météo ──────────────────────────────────
@@ -56,7 +56,7 @@ class HaScreen extends ConsumerWidget {
                     // ── Multimédia ─────────────────────────────
                     SliverToBoxAdapter(child: _buildMediaSection(haState, ref)),
                     // ── Gaming ─────────────────────────────────
-                    SliverToBoxAdapter(child: _buildGamingSection(haState, ref)),
+                    SliverToBoxAdapter(child: _buildGamingSection(haState, ref, config)),
                   ],
                   const SliverToBoxAdapter(child: SizedBox(height: 40)),
                 ],
@@ -224,7 +224,7 @@ class HaScreen extends ConsumerWidget {
 
   // ── PRÉSENCE & ALARME ─────────────────────────────────────
 
-  Widget _buildPresenceSection(HaState s, WidgetRef ref) {
+  Widget _buildPresenceSection(HaState s, WidgetRef ref, HaConfig config) {
     final renaud = s.entity(HaEntities.presenceRenaud);
     final gaelle = s.entity(HaEntities.presenceGaelle);
     final alarme = s.entity(HaEntities.alarme);
@@ -253,6 +253,15 @@ class HaScreen extends ConsumerWidget {
             const SizedBox(height: 10),
             _AlarmCard(entity: alarme),
           ],
+          // Visiophone
+          Builder(builder: (ctx) {
+            final visioMoniteur = s.entity(HaEntities.visiophoneMoniteur);
+            if (visioMoniteur == null) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: _VisioCard(entity: visioMoniteur, config: config),
+            );
+          }),
         ],
       ),
     );
@@ -360,6 +369,13 @@ class HaScreen extends ConsumerWidget {
       (HaEntities.ledTV, 'LED TV', Icons.color_lens_rounded, const Color(0xFFFF4D6D)),
       (HaEntities.lumiereEtabli, 'Établi\ngarage', Icons.lightbulb_rounded, const Color(0xFFE8C000)),
     ];
+    // Capteurs d'ouverture (lecture seule)
+    final capteurs = [
+      (HaEntities.capteurPortailGarage, 'Portail garage'),
+      (HaEntities.capteurPortailExt, 'Portail ext.'),
+      (HaEntities.capteurPorteGarage, 'Porte garage'),
+      (HaEntities.capteurFenetreGarage, 'Fenêtre garage'),
+    ];
 
     return _Section(
       title: 'ACTIONS RAPIDES',
@@ -383,6 +399,43 @@ class HaScreen extends ConsumerWidget {
             );
           },
         ),
+      ),
+      const SizedBox(height: 10),
+      // Capteurs d'ouverture
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: capteurs.map((c) {
+          final (entityId, label) = c;
+          final entity = s.entity(entityId);
+          final isOpen = entity?.isOn ?? false;
+          final color = isOpen ? const Color(0xFFFF4D6D) : const Color(0xFF5CDD8B);
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: color.withValues(alpha: 0.08),
+              border: Border.all(color: color.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isOpen ? Icons.lock_open_rounded : Icons.lock_rounded,
+                  color: color, size: 13,
+                ),
+                const SizedBox(width: 5),
+                Text(label,
+                  style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+                const SizedBox(width: 4),
+                Text(
+                  isOpen ? 'Ouvert' : 'Fermé',
+                  style: TextStyle(color: color.withValues(alpha: 0.7), fontSize: 10),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -456,7 +509,7 @@ class HaScreen extends ConsumerWidget {
 
   // ── GAMING ────────────────────────────────────────────────
 
-  Widget _buildGamingSection(HaState s, WidgetRef ref) {
+  Widget _buildGamingSection(HaState s, WidgetRef ref, HaConfig config) {
     final steam = s.entity(HaEntities.steam);
     final xbox = s.entity(HaEntities.xbox);
     final epic = s.entity(HaEntities.epicGames);
@@ -498,6 +551,29 @@ class HaScreen extends ConsumerWidget {
             const SizedBox(height: 10),
             _PrintProgressCard(entity: printTime),
           ],
+          // Epic Deals
+          Builder(builder: (_) {
+            final deals = s.entity(HaEntities.epicDeals);
+            if (deals == null) return const SizedBox.shrink();
+            final hasDeals = deals.state == 'on';
+            return Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: HaEntityCard(entity: deals, compact: true),
+            );
+          }),
+          // Caméra imprimante (si allumée)
+          Builder(builder: (_) {
+            final printerOn = s.entity(HaEntities.imprimante3D)?.isOn ?? false;
+            if (!printerOn || !config.isConfigured) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: HaCameraCard(
+                baseUrl: config.url,
+                token: config.token,
+                entityId: HaEntities.cameraImprimante,
+              ),
+            );
+          }),
         ],
       ),
     );
@@ -1005,6 +1081,58 @@ class _PersonCardPlaceholder extends StatelessWidget {
                 Text(name, style: const TextStyle(color: Colors.white54, fontSize: 13, fontWeight: FontWeight.w700)),
                 const Text('Non configuré', style: TextStyle(color: Colors.white24, fontSize: 11)),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VisioCard extends StatelessWidget {
+  final HaEntity entity;
+  final HaConfig config;
+
+  const _VisioCard({required this.entity, required this.config});
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = entity.isOn;
+    final color = isActive ? const Color(0xFFFF4D6D) : const Color(0xFF5CDD8B);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: color.withValues(alpha: 0.07),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.videocam_rounded, color: color, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Visiophone',
+                    style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
+                Text(
+                  entity.friendlyName,
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: color.withValues(alpha: 0.15),
+            ),
+            child: Text(
+              isActive ? 'Actif' : 'Inactif',
+              style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700),
             ),
           ),
         ],
