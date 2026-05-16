@@ -333,7 +333,7 @@ class HaScreen extends ConsumerWidget {
       (HaEntities.portailExt, 'Portail\nextérieur', Icons.door_sliding_rounded, const Color(0xFF00D4FF)),
       (HaEntities.priseTV, 'Prise TV', Icons.tv_rounded, const Color(0xFF5CDD8B)),
       (HaEntities.lumiereCamera, 'Lumière\ncaméra', Icons.highlight_rounded, const Color(0xFFE8C000)),
-      (HaEntities.ledTV, 'LED TV', Icons.strip_line_rounded, const Color(0xFFFF4D6D)),
+      (HaEntities.ledTV, 'LED TV', Icons.color_lens_rounded, const Color(0xFFFF4D6D)),
       (HaEntities.lumiereEtabli, 'Établi\ngarage', Icons.lightbulb_rounded, const Color(0xFFE8C000)),
     ];
 
