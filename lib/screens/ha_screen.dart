@@ -380,29 +380,32 @@ class HaScreen extends ConsumerWidget {
     return _Section(
       title: 'ACTIONS RAPIDES',
       titleColor: const Color(0xFF00D4FF),
-      child: SizedBox(
-        height: 110,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: actions.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 10),
-          itemBuilder: (_, i) {
-            final (entityId, label, icon, color) = actions[i];
-            final entity = s.entity(entityId);
-            return HaActionButton(
-              label: label,
-              icon: icon,
-              isOn: entity?.isOn ?? false,
-              isUnavailable: entity?.isUnavailable ?? true,
-              activeColor: color,
-              onTap: () => ref.read(haProvider.notifier).toggle(entityId),
-            );
-          },
-        ),
-      ),
-      SizedBox(height: 10),
-      // Capteurs d'ouverture
-      Wrap(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: 110,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: actions.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (_, i) {
+                final (entityId, label, icon, color) = actions[i];
+                final entity = s.entity(entityId);
+                return HaActionButton(
+                  label: label,
+                  icon: icon,
+                  isOn: entity?.isOn ?? false,
+                  isUnavailable: entity?.isUnavailable ?? true,
+                  activeColor: color,
+                  onTap: () => ref.read(haProvider.notifier).toggle(entityId),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Capteurs d'ouverture
+          Wrap(
         spacing: 8,
         runSpacing: 8,
         children: capteurs.map((c) {
@@ -436,6 +439,8 @@ class HaScreen extends ConsumerWidget {
             ),
           );
         }).toList(),
+          ),
+        ],
       ),
     );
   }
