@@ -45,15 +45,15 @@ class HaService {
     if (res.statusCode == 401) {
       throw Exception('Token invalide ou expiré. Vérifiez votre token dans les settings.');
     }
-    if (res.statusCode != 200) throw Exception('HA API error: \${res.statusCode}');
+    if (res.statusCode != 200) throw Exception('HA API error: ${res.statusCode}');
     // Détecter si on reçoit du HTML au lieu de JSON (URL mal configurée)
     final body = res.body;
     if (body.trimLeft().startsWith('<!') || body.trimLeft().startsWith('<html')) {
       throw Exception(
-        'L'URL retourne une page HTML.\n'
-        'Vérifiez votre URL dans les settings.\n'
-        'Nabu Casa : https://XXXXX.ui.nabu.casa\n'
-        'Local : http://192.168.1.X:8123'
+        "L'URL retourne une page HTML.\n"
+        "Vérifiez votre URL dans les settings.\n"
+        "Nabu Casa : https://XXXXX.ui.nabu.casa\n"
+        "Local : http://192.168.1.X:8123"
       );
     }
 

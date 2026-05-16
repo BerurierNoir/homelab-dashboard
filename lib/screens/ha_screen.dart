@@ -400,7 +400,7 @@ class HaScreen extends ConsumerWidget {
           },
         ),
       ),
-      const SizedBox(height: 10),
+      SizedBox(height: 10),
       // Capteurs d'ouverture
       Wrap(
         spacing: 8,
@@ -555,7 +555,6 @@ class HaScreen extends ConsumerWidget {
           Builder(builder: (_) {
             final deals = s.entity(HaEntities.epicDeals);
             if (deals == null) return const SizedBox.shrink();
-            final hasDeals = deals.state == 'on';
             return Padding(
               padding: const EdgeInsets.only(top: 10),
               child: HaEntityCard(entity: deals, compact: true),
