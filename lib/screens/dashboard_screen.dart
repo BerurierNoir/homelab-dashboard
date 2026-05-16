@@ -99,10 +99,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final shortcuts = ref.watch(enabledShortcutsProvider);
     final health = ref.watch(healthProvider);
     final settings = ref.watch(settingsProvider);
-        final beszel = ref.watch(beszelProvider);
+    final networkMode = ref.watch(servicesProvider).networkMode;
+    final beszel = ref.watch(beszelProvider);
     final cameras = ref.watch(enabledCamerasProvider);
     final quickActions = ref.watch(enabledQuickActionsProvider);
-    final tailscale = ref.watch(tailscaleProvider);
 
     // Reload stream URLs whenever the camera list changes
     ref.listen<List<CameraConfig>>(camerasProvider, (_, __) => _loadStreamUrls());
@@ -119,7 +119,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 parent: BouncingScrollPhysics(),
               ),
               slivers: [
-                _buildAppBar(tailscale),
+                _buildAppBar(),
                 // ── Stats Beszel ─────────────────────────────────
                 if (beszel.configured && beszel.stats != null)
                   SliverToBoxAdapter(
@@ -208,36 +208,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
       );
 
-        final color =
-        isLocal ? const Color(0xFF1976D2) : const Color(0xFF7B1FA2);
-    return Container(
-      height: 24,
-      width: double.infinity,
-      color: color.withValues(alpha: 0.13),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            isLocal ? Icons.home_rounded : Icons.lock_rounded,
-            size: 11,
-            color: color,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            isLocal ? 'Réseau local' : 'Tailscale',
-            style: TextStyle(
-              fontSize: 11,
-              color: color,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAppBar(TailscaleStatus tailscale) {
+  Widget _buildAppBar() {
     return SliverAppBar(
       pinned: true,
       expandedHeight: 110,
@@ -274,7 +245,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         background: _buildStarField(),
       ),
       actions: [
-        _buildTailscaleButton(tailscale),
         IconButton(
           icon: const Icon(Icons.monitor_heart_outlined,
               color: Color(0xFF00D4FF)),
@@ -298,69 +268,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _buildTailscaleButton(TailscaleStatus status) {
-    final Color iconColor;
-    final Color dotColor;
-    final String tooltip;
-
-    switch (status) {
-      case TailscaleStatus.connected:
-        iconColor = const Color(0xFF5CDD8B);
-        dotColor = const Color(0xFF5CDD8B);
-        tooltip = 'Tailscale connecté';
-      case TailscaleStatus.disconnected:
-        iconColor = Colors.white38;
-        dotColor = const Color(0xFFFF4D6D);
-        tooltip = 'Tailscale déconnecté — appuyer pour ouvrir';
-      case TailscaleStatus.unknown:
-        iconColor = Colors.white24;
-        dotColor = Colors.white24;
-        tooltip = 'Tailscale';
-    }
-
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () => launchUrl(
-          Uri.parse(
-            'intent:#Intent;package=com.tailscale.ipn.android'
-            ';action=android.intent.action.MAIN'
-            ';category=android.intent.category.LAUNCHER;end',
-          ),
-          mode: LaunchMode.externalApplication,
-        ).catchError((_) => false),
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Icon(Icons.vpn_lock_rounded, color: iconColor, size: 24),
-              Positioned(
-                right: -2,
-                bottom: -2,
-                child: Container(
-                  width: 9,
-                  height: 9,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: dotColor,
-                    border: Border.all(
-                        color: const Color(0xFF080818), width: 1.5),
-                    boxShadow: status == TailscaleStatus.connected
-                        ? [BoxShadow(
-                            color: dotColor.withValues(alpha: 0.6),
-                            blurRadius: 4)]
-                        : null,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildStarField() {
     final rng = math.Random(42);

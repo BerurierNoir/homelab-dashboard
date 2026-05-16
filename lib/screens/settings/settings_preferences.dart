@@ -159,9 +159,14 @@ class _SettingsPreferencesScreenState
               const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => ref
-                      .read(servicesProvider.notifier)
-                      .resetAllUrls(),
+                  onPressed: () {
+                    // URLs vides par défaut — chaque service a déjà defaultUrl=''
+                    final notifier = ref.read(servicesProvider.notifier);
+                    final services = ref.read(servicesProvider).services;
+                    for (final s in services) {
+                      notifier.resetUrl(s.id);
+                    }
+                  },
                   icon: const Icon(Icons.restore_rounded, size: 14),
                   label: const Text('URLs défaut',
                       style: TextStyle(fontSize: 12)),
