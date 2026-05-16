@@ -40,7 +40,7 @@ class _SettingsHaScreenState extends ConsumerState<SettingsHaScreen> {
       _testSuccess = null;
     });
     final svc = HaService(
-      baseUrl: _urlCtrl.text.trim(),
+      baseUrl: _cleanUrl(_urlCtrl.text),
       token: _tokenCtrl.text.trim(),
     );
     final ok = await svc.testConnection();
@@ -53,9 +53,26 @@ class _SettingsHaScreenState extends ConsumerState<SettingsHaScreen> {
     });
   }
 
+  String _cleanUrl(String raw) {
+    var url = raw.trim();
+    // Supprimer le slash final
+    url = url.replaceAll(RegExp(r'/+$'), '');
+    // Ajouter https:// si pas de schéma
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://$url';
+    }
+    // Nabu Casa : forcer https
+    if (url.contains('nabu.casa') && url.startsWith('http://')) {
+      url = url.replaceFirst('http://', 'https://');
+    }
+    return url;
+  }
+
   Future<void> _save() async {
+    final cleanUrl = _cleanUrl(_urlCtrl.text);
+    _urlCtrl.text = cleanUrl; // Mettre à jour le champ
     await ref.read(haConfigProvider.notifier).save(
-          url: _urlCtrl.text.trim(),
+          url: cleanUrl,
           token: _tokenCtrl.text.trim(),
         );
     if (mounted) {
@@ -97,13 +114,13 @@ class _SettingsHaScreenState extends ConsumerState<SettingsHaScreen> {
             const SizedBox(height: 8),
             _field(
               controller: _urlCtrl,
-              hint: 'http://192.168.1.xxx:8123',
+              hint: 'https://xxxxx.ui.nabu.casa  ou  http://192.168.1.x:8123',
               icon: Icons.link_rounded,
               keyboardType: TextInputType.url,
             ),
             const SizedBox(height: 4),
             Text(
-              'Ou votre URL Tailscale : http://100.x.x.x:8123',
+              'Nabu Casa : copier depuis app.nabu.casa → Remote UI\nLocal : http://192.168.1.x:8123 · Tailscale : http://100.x.x.x:8123',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.35),
                 fontSize: 11,

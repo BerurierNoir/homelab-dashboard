@@ -18,7 +18,10 @@ class HaService {
   String get _wsUrl {
     final uri = Uri.parse(baseUrl);
     final scheme = uri.scheme == 'https' ? 'wss' : 'ws';
-    return '$scheme://${uri.host}:${uri.port}/api/websocket';
+    // Nabu Casa : port 443 standard, ne pas l'ajouter explicitement
+    final port = (uri.port == 443 || uri.port == 80 || uri.port == -1) 
+        ? '' : ':${uri.port}';
+    return '$scheme://${uri.host}$port/api/websocket';
   }
 
   // ── REST ──────────────────────────────────────────────────
@@ -39,9 +42,22 @@ class HaService {
         .get(Uri.parse('$baseUrl/api/states'), headers: _headers)
         .timeout(const Duration(seconds: 10));
 
-    if (res.statusCode != 200) throw Exception('HA API error: ${res.statusCode}');
+    if (res.statusCode == 401) {
+      throw Exception('Token invalide ou expiré. Vérifiez votre token dans les settings.');
+    }
+    if (res.statusCode != 200) throw Exception('HA API error: \${res.statusCode}');
+    // Détecter si on reçoit du HTML au lieu de JSON (URL mal configurée)
+    final body = res.body;
+    if (body.trimLeft().startsWith('<!') || body.trimLeft().startsWith('<html')) {
+      throw Exception(
+        'L'URL retourne une page HTML.\n'
+        'Vérifiez votre URL dans les settings.\n'
+        'Nabu Casa : https://XXXXX.ui.nabu.casa\n'
+        'Local : http://192.168.1.X:8123'
+      );
+    }
 
-    final List<dynamic> all = jsonDecode(res.body);
+    final List<dynamic> all = jsonDecode(body);
     final result = <String, HaEntity>{};
     for (final item in all) {
       final entity = HaEntity.fromJson(item as Map<String, dynamic>);
