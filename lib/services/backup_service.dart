@@ -23,6 +23,7 @@ class BackupService {
     'beszel_url',
     'beszel_system_id',
     'beszel_system_name',
+    'ha_url',
     'dark_theme',
     'refresh_interval',
     'lock_type',
@@ -35,7 +36,8 @@ class BackupService {
       key.startsWith('camera_') ||
       key.startsWith('qa_auth_') ||
       key == 'beszel_email' ||
-      key == 'beszel_password';
+      key == 'beszel_password' ||
+      key == 'ha_token';
 
   // Simple iterated SHA-256 KDF: fast enough on mobile, harder to brute-force
   // than a single hash. Not PBKDF2 but adequate for home-lab use.

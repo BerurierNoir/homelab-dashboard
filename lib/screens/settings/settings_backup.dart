@@ -11,6 +11,7 @@ import '../../providers/services_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/shortcuts_provider.dart';
 import '../../services/backup_service.dart';
+import '../../providers/ha_provider.dart';
 
 class SettingsBackupScreen extends ConsumerStatefulWidget {
   const SettingsBackupScreen({super.key});
@@ -25,26 +26,143 @@ class _SettingsBackupScreenState extends ConsumerState<SettingsBackupScreen> {
   bool _importing = false;
 
   Future<void> _export() async {
+    // Choisir entre sauvegarde locale ou partage
+    final choice = await _showExportChoiceDialog();
+    if (choice == null) return;
+
     final passphrase = await _showPassphraseDialog(confirm: true);
     if (passphrase == null) return;
 
     setState(() => _exporting = true);
     try {
-      final content = await BackupService.export(passphrase);
-      final dir = await getTemporaryDirectory();
+      final backupContent = await BackupService.export(passphrase);
       final date = DateTime.now().toIso8601String().substring(0, 10);
-      final file =
-          File('${dir.path}/homelab-backup-$date.homelabbackup');
-      await file.writeAsString(content);
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        subject: 'HomeLab Backup $date',
-      );
+      final fileName = 'homelab-backup-$date.homelabbackup';
+
+      if (choice == 'local') {
+        // Sauvegarder dans le dossier Téléchargements
+        Directory? saveDir;
+        if (Platform.isAndroid) {
+          saveDir = Directory('/storage/emulated/0/Download');
+          if (!await saveDir.exists()) {
+            saveDir = await getExternalStorageDirectory();
+          }
+        }
+        saveDir ??= await getApplicationDocumentsDirectory();
+
+        final file = File('${saveDir.path}/$fileName');
+        await file.writeAsString(backupContent);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Sauvegardé dans ${file.path}'),
+              backgroundColor: const Color(0xFF5CDD8B),
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+      } else {
+        // Partage via Share sheet
+        final dir = await getTemporaryDirectory();
+        final file = File('${dir.path}/$fileName');
+        await file.writeAsString(backupContent);
+        await Share.shareXFiles(
+          [XFile(file.path)],
+          subject: 'HomeLab Backup $date',
+        );
+      }
     } catch (e) {
       if (mounted) _showError('Erreur export : $e');
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
+  }
+
+  Future<String?> _showExportChoiceDialog() async {
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0F0F2A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Sauvegarder vers…',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _choiceButton(
+              ctx,
+              icon: Icons.folder_rounded,
+              label: 'Téléphone (Téléchargements)',
+              subtitle: 'Enregistré localement sans partage',
+              value: 'local',
+              color: const Color(0xFF5CDD8B),
+            ),
+            const SizedBox(height: 10),
+            _choiceButton(
+              ctx,
+              icon: Icons.share_rounded,
+              label: 'Partager',
+              subtitle: 'Email, Drive, Nextcloud…',
+              value: 'share',
+              color: const Color(0xFF00D4FF),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler',
+                style: TextStyle(color: Colors.white38)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _choiceButton(
+    BuildContext ctx, {
+    required IconData icon,
+    required String label,
+    required String subtitle,
+    required String value,
+    required Color color,
+  }) {
+    return GestureDetector(
+      onTap: () => Navigator.pop(ctx, value),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          color: color.withValues(alpha: 0.08),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14)),
+                  Text(subtitle,
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.45),
+                          fontSize: 11)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _import() async {
@@ -70,6 +188,8 @@ class _SettingsBackupScreenState extends ConsumerState<SettingsBackupScreen> {
       ref.invalidate(quickActionsProvider);
       ref.invalidate(beszelProvider);
       ref.invalidate(settingsProvider);
+      ref.invalidate(haConfigProvider);
+      ref.invalidate(haProvider);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

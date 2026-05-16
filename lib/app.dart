@@ -175,8 +175,8 @@ class _MainShellState extends State<_MainShell> {
   int _currentIndex = 0;
 
   static const _screens = [
-    DashboardScreen(),
     HaScreen(),
+    DashboardScreen(),
   ];
 
   @override
@@ -216,14 +216,14 @@ class _MainShellState extends State<_MainShell> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _NavItem(
-                icon: Icons.hub_rounded,
-                label: 'Services',
+                icon: Icons.home_rounded,
+                label: 'Domotique',
                 selected: _currentIndex == 0,
                 onTap: () => setState(() => _currentIndex = 0),
               ),
               _NavItem(
-                icon: Icons.home_rounded,
-                label: 'Domotique',
+                icon: Icons.hub_rounded,
+                label: 'Services',
                 selected: _currentIndex == 1,
                 onTap: () => setState(() => _currentIndex = 1),
               ),

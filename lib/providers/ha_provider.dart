@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/ha_entity.dart';
 import '../services/ha_service.dart';
 
@@ -27,17 +28,29 @@ class HaConfigNotifier extends Notifier<HaConfig> {
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
+    // Token depuis secure storage, fallback prefs pour compat ancienne version
+    const sec = FlutterSecureStorage(
+      aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    );
+    final token = await sec.read(key: _tokenKey) ??
+        prefs.getString(_tokenKey) ?? '';
     state = HaConfig(
       url: prefs.getString(_urlKey) ?? '',
-      token: prefs.getString(_tokenKey) ?? '',
+      token: token,
     );
   }
 
+  static const _secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
+
   Future<void> save({required String url, required String token}) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_urlKey, url.trimRight().replaceAll(RegExp(r'/$'), ''));
-    await prefs.setString(_tokenKey, token.trim());
-    state = HaConfig(url: url, token: token);
+    final cleanUrl = url.trimRight().replaceAll(RegExp(r'/$'), '');
+    await prefs.setString(_urlKey, cleanUrl);
+    // Token stocké en secure storage (chiffré)
+    await _secureStorage.write(key: _tokenKey, value: token.trim());
+    state = HaConfig(url: cleanUrl, token: token.trim());
   }
 }
 
