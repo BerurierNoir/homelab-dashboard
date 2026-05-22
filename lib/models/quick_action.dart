@@ -32,7 +32,7 @@ class QuickAction {
   });
 
   Color get color => Color(colorValue);
-  IconData get icon => IconData(iconCode, fontFamily: 'MaterialIcons');
+  IconData get icon => IconData(iconCode, fontFamily: 'MaterialIcons', matchTextDirection: false);
   bool get isWol => type == QuickActionType.wol;
 
   Map<String, dynamic> toJson() => {
