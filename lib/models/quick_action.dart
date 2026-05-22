@@ -31,10 +31,16 @@ class QuickAction {
     this.enabled = true,
   });
 
-  Color get color => Color(colorValue);
-  IconData get icon {
-    // ignore: prefer_const_constructors
-    return IconData(iconCode, fontFamily: 'MaterialIcons');
+  Color get color => Color(colorValue & 0xFFFFFFFF);
+  IconData get icon => _iconFromCode(iconCode);
+  
+  static IconData _iconFromCode(int code) {
+    // Cherche dans la liste des icônes disponibles
+    for (final entry in kQuickActionIcons) {
+      if (entry.icon.codePoint == code) return entry.icon;
+    }
+    // Fallback sur la première icône
+    return kQuickActionIcons.first.icon;
   }
   bool get isWol => type == QuickActionType.wol;
 
