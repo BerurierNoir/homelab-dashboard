@@ -17,7 +17,7 @@ class QuickAction {
   final String wolBroadcast;
   final bool enabled;
 
-  const QuickAction({
+  QuickAction({
     required this.id,
     required this.name,
     required this.iconCode,
@@ -32,7 +32,10 @@ class QuickAction {
   });
 
   Color get color => Color(colorValue);
-  IconData get icon => IconData(iconCode, fontFamily: 'MaterialIcons', matchTextDirection: false);
+  IconData get icon {
+    // ignore: prefer_const_constructors
+    return IconData(iconCode, fontFamily: 'MaterialIcons');
+  }
   bool get isWol => type == QuickActionType.wol;
 
   Map<String, dynamic> toJson() => {
