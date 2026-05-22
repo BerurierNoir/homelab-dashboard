@@ -13,6 +13,7 @@ class HaService {
   Map<String, String> get _headers => {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       };
 
   String get _wsUrl {
@@ -26,15 +27,37 @@ class HaService {
 
   // ── REST ──────────────────────────────────────────────────
 
-  Future<bool> testConnection() async {
+  Future<String?> testConnectionDetailed() async {
     try {
       final res = await http
           .get(Uri.parse('$baseUrl/api/'), headers: _headers)
-          .timeout(const Duration(seconds: 5));
-      return res.statusCode == 200;
-    } catch (_) {
-      return false;
+          .timeout(const Duration(seconds: 8));
+      
+      if (res.statusCode == 200) {
+        final body = res.body;
+        if (body.contains('message') || body.contains('API')) {
+          return null; // OK
+        }
+        if (body.trimLeft().startsWith('<')) {
+          return 'Réponse HTML reçue — token invalide ou URL incorrecte';
+        }
+        return null; // OK
+      } else if (res.statusCode == 401) {
+        return 'Token invalide (401)';
+      } else if (res.statusCode == 403) {
+        return 'Accès refusé (403)';
+      } else {
+        return 'Erreur HTTP ${res.statusCode}';
+      }
+    } on TimeoutException {
+      return 'Timeout — HA inaccessible';
+    } catch (e) {
+      return e.toString();
     }
+  }
+
+  Future<bool> testConnection() async {
+    return (await testConnectionDetailed()) == null;
   }
 
   Future<Map<String, HaEntity>> getStates(List<String> entityIds) async {

@@ -43,13 +43,13 @@ class _SettingsHaScreenState extends ConsumerState<SettingsHaScreen> {
       baseUrl: _cleanUrl(_urlCtrl.text),
       token: _tokenCtrl.text.trim(),
     );
-    final ok = await svc.testConnection();
+    final error = await svc.testConnectionDetailed();
     setState(() {
       _testing = false;
-      _testSuccess = ok;
-      _testResult = ok
+      _testSuccess = error == null;
+      _testResult = error == null
           ? '✅ Connexion réussie !'
-          : '❌ Impossible de joindre Home Assistant.\nVérifiez l\'URL et le token.';
+          : '❌ \$error';
     });
   }
 
