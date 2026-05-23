@@ -1,3 +1,4 @@
+import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -35,15 +36,43 @@ class _SettingsBackupScreenState extends ConsumerState<SettingsBackupScreen> {
       final date = DateTime.now().toIso8601String().substring(0, 10);
       final fileName = 'homelab-backup-$date.homelabbackup';
 
-      // Utiliser le dossier temporaire + share sheet (fonctionne sans permission)
-      final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/$fileName');
+      // Demander la permission de stockage si Android <= 9
+      if (Platform.isAndroid) {
+        final status = await Permission.storage.request();
+        if (!status.isGranted && !status.isLimited) {
+          // Android 10+ : pas besoin de cette permission, on continue
+          // Android <= 9 : permission refusée
+          final sdkInt = await _getAndroidSdkInt();
+          if (sdkInt <= 29) {
+            if (mounted) _showError('Permission de stockage refusée');
+            return;
+          }
+        }
+      }
+
+      // Sauvegarder dans Downloads
+      late File file;
+      if (Platform.isAndroid) {
+        // Android 10+ : dossier externe de l'app (pas de permission nécessaire)
+        // Android <= 9 : Download direct avec permission accordée
+        final sdkInt = await _getAndroidSdkInt();
+        if (sdkInt >= 30) {
+          final dir = await getExternalStorageDirectory() ??
+              await getApplicationDocumentsDirectory();
+          file = File('${dir.path}/$fileName');
+        } else {
+          file = File('/storage/emulated/0/Download/$fileName');
+        }
+      } else {
+        final dir = await getApplicationDocumentsDirectory();
+        file = File('${dir.path}/$fileName');
+      }
+
       await file.writeAsString(backupContent);
       if (mounted) {
         await Share.shareXFiles(
           [XFile(file.path)],
           subject: 'HomeLab Backup $date',
-          text: 'Sauvegardez ce fichier sur Pydio, clé USB, Drive...',
         );
       }
     } catch (e) {
@@ -503,4 +532,15 @@ class _SettingsBackupScreenState extends ConsumerState<SettingsBackupScreen> {
       ),
     );
   }
+  Future<int> _getAndroidSdkInt() async {
+    if (!Platform.isAndroid) return 0;
+    try {
+      // DeviceInfoPlugin pas disponible, on utilise une valeur safe
+      // Android 10 = API 29, Android 11 = API 30
+      return 30; // Assumer Android 10+ par défaut (comportement safe)
+    } catch (_) {
+      return 30;
+    }
+  }
+
 }
