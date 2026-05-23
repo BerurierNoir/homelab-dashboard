@@ -108,12 +108,15 @@ class BeszelNotifier extends StateNotifier<BeszelState> {
     final password = await _storage.read(key: _kPassword);
     if (password == null) return null;
 
+    // Nettoyer l'URL (supprimer le slash final)
+    final cleanUrl = url.replaceAll(RegExp(r'/+$'), '');
+
     // Beszel embeds PocketBase — try all three auth endpoints depending on
     // PocketBase version and whether the account is a user, admin, or superuser.
     final endpoints = [
-      '$url/api/collections/users/auth-with-password',   // regular user
-      '$url/api/admins/auth-with-password',               // PocketBase admin < 0.23
-      '$url/api/collections/_superusers/auth-with-password', // PocketBase >= 0.23
+      '$cleanUrl/api/collections/users/auth-with-password',   // regular user
+      '$cleanUrl/api/admins/auth-with-password',               // PocketBase admin < 0.23
+      '$cleanUrl/api/collections/_superusers/auth-with-password', // PocketBase >= 0.23
     ];
 
     for (final endpoint in endpoints) {
@@ -284,7 +287,7 @@ class BeszelNotifier extends StateNotifier<BeszelState> {
   Future<void> selectSystem(
       String url, String systemId, String systemName) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kUrl, url);
+    await prefs.setString(_kUrl, url.replaceAll(RegExp(r'/+$'), ''));
     await prefs.setString(_kSystemId, systemId);
     await prefs.setString(_kSystemName, systemName);
 
