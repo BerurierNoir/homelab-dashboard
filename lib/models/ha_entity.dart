@@ -64,8 +64,8 @@ class HaEntities {
   static const presenceRenaud = 'person.renaud';
   static const presenceGaelle = 'person.gaelle';
   static const alarme = 'alarm_control_panel.alarmo';
-  static const portailGarage = 'cover.portail_garage';
-  static const portailExt = 'cover.portail';
+  static const portailGarage = 'switch.portail_garage';  // switch pour déclencher
+  static const portailExt = 'script.ouvrir_fermer_portail';  // script pour déclencher
   static const priseTV = 'switch.smart_plug_socket_1';
   static const lumiereCamera = 'light.cam_exterieur_projecteur';
   static const ledTV = 'light.housseled_strip_led';

@@ -361,13 +361,23 @@ class HaScreen extends ConsumerWidget {
   // ── ACTIONS RAPIDES ───────────────────────────────────────
 
   Widget _buildActionsSection(HaState s, WidgetRef ref) {
+    // Portails : état depuis binary sensors, action sur switch/script
+    final portailGarageState = s.entity(HaEntities.capteurPortailGarage);
+    final portailExtState = s.entity(HaEntities.capteurPortailExt);
+
     final actions = [
-      (HaEntities.portailGarage, 'Portail\ngarage', Icons.garage_rounded, const Color(0xFF00D4FF)),
-      (HaEntities.portailExt, 'Portail\nextérieur', Icons.door_sliding_rounded, const Color(0xFF00D4FF)),
-      (HaEntities.priseTV, 'Prise TV', Icons.tv_rounded, const Color(0xFF5CDD8B)),
-      (HaEntities.lumiereCamera, 'Lumière\ncaméra', Icons.highlight_rounded, const Color(0xFFE8C000)),
-      (HaEntities.ledTV, 'LED TV', Icons.color_lens_rounded, const Color(0xFFFF4D6D)),
-      (HaEntities.lumiereEtabli, 'Établi\ngarage', Icons.lightbulb_rounded, const Color(0xFFE8C000)),
+      (HaEntities.portailGarage, 'Portail\ngarage', Icons.garage_rounded,
+        const Color(0xFF00D4FF), portailGarageState?.isOn ?? false),
+      (HaEntities.portailExt, 'Portail\nextérieur', Icons.door_sliding_rounded,
+        const Color(0xFF00D4FF), portailExtState?.isOn ?? false),
+      (HaEntities.priseTV, 'Prise TV', Icons.tv_rounded,
+        const Color(0xFF5CDD8B), s.entity(HaEntities.priseTV)?.isOn ?? false),
+      (HaEntities.lumiereCamera, 'Lumière\ncaméra', Icons.highlight_rounded,
+        const Color(0xFFE8C000), s.entity(HaEntities.lumiereCamera)?.isOn ?? false),
+      (HaEntities.ledTV, 'LED TV', Icons.color_lens_rounded,
+        const Color(0xFFFF4D6D), s.entity(HaEntities.ledTV)?.isOn ?? false),
+      (HaEntities.lumiereEtabli, 'Établi\ngarage', Icons.lightbulb_rounded,
+        const Color(0xFFE8C000), s.entity(HaEntities.lumiereEtabli)?.isOn ?? false),
     ];
     // Capteurs d'ouverture (lecture seule)
     final capteurs = [

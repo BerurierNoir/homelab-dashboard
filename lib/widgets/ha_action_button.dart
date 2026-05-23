@@ -128,15 +128,32 @@ class _HaActionButtonState extends State<HaActionButton>
                 widget.label,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: widget.isOn && !widget.isUnavailable
-                      ? Colors.white
-                      : Colors.white54,
+                  color: Colors.white.withValues(alpha: 0.85),
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                   height: 1.3,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              // Indicateur d'état compact
+              Container(
+                width: 6, height: 6,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.isUnavailable
+                      ? Colors.white24
+                      : widget.isOn
+                          ? widget.activeColor
+                          : Colors.white24,
+                  boxShadow: widget.isOn && !widget.isUnavailable ? [
+                    BoxShadow(
+                      color: widget.activeColor.withValues(alpha: 0.7),
+                      blurRadius: 6,
+                    )
+                  ] : null,
+                ),
               ),
             ],
           ),
