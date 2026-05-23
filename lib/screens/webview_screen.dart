@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../models/service.dart';
@@ -6,7 +7,6 @@ import '../services/auto_login_service.dart';
 
 class WebViewScreen extends StatefulWidget {
   final ServiceModel service;
-
   const WebViewScreen({super.key, required this.service});
 
   @override
@@ -17,7 +17,9 @@ class _WebViewScreenState extends State<WebViewScreen> {
   late final WebViewController _controller;
   double _progress = 0;
   bool _hasError = false;
-  bool _autoLoginDone = false;
+  bool _showLoginButton = false;
+  String _currentUrl = '';
+  int _loginAttempts = 0;
 
   @override
   void initState() {
@@ -29,39 +31,66 @@ class _WebViewScreenState extends State<WebViewScreen> {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(const Color(0xFF080818))
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onProgress: (p) => setState(() => _progress = p / 100),
-          onPageStarted: (_) => setState(() {
-            _hasError = false;
-            _autoLoginDone = false;
-          }),
-          onPageFinished: (url) async {
-            setState(() => _progress = 1);
-            if (!_autoLoginDone) {
-              _autoLoginDone = true;
-              await autoLoginService.performLogin(
-                service: widget.service,
-                controller: _controller,
-                currentUrl: url,
-              );
-            }
-          },
-          onWebResourceError: (err) {
-            if (err.isForMainFrame == true) {
-              setState(() {
-                _hasError = true;
-              });
-            }
-          },
-          onSslAuthError: (SslAuthError error) async {
-            // Accept self-signed certificates (required for Proxmox VE)
-            await error.proceed();
-          },
-        ),
+      // Fix clipboard freeze : handler JavaScript pour paste
+      ..addJavaScriptChannel(
+        'FlutterClipboard',
+        onMessageReceived: (msg) async {
+          // Gérer le paste depuis Flutter sans bloquer le WebView
+          final data = await Clipboard.getData(Clipboard.kTextPlain);
+          if (data?.text != null) {
+            await _controller.runJavaScript(
+              'document.activeElement.value += ${jsonEncodeStr(data!.text!)};'
+            );
+          }
+        },
       )
+      ..setNavigationDelegate(NavigationDelegate(
+        onProgress: (p) => setState(() => _progress = p / 100),
+        onPageStarted: (url) => setState(() {
+          _hasError = false;
+          _currentUrl = url;
+          _showLoginButton = false;
+          // Reset attempts pour les nouvelles pages
+          if (!url.contains(_currentUrl.split('/').take(3).join('/'))) {
+            _loginAttempts = 0;
+          }
+        }),
+        onPageFinished: (url) async {
+          setState(() {
+            _progress = 1;
+            _currentUrl = url;
+          });
+          // Auto-login : plus de flag global, on tente à chaque page
+          // La détection se fait côté JS (cherche input[type=password])
+          if (_loginAttempts < 3) {
+            _loginAttempts++;
+            await autoLoginService.performLogin(
+              service: widget.service,
+              controller: _controller,
+              currentUrl: url,
+            );
+          }
+          // Afficher bouton login manuel si toujours sur une page avec password field
+          await Future.delayed(const Duration(seconds: 3));
+          if (mounted) {
+            final hasLoginForm = await _controller.runJavaScriptReturningResult(
+              'document.querySelector("input[type=password]") !== null'
+            );
+            setState(() {
+              _showLoginButton = hasLoginForm.toString() == 'true';
+            });
+          }
+        },
+        onWebResourceError: (err) {
+          if (err.isForMainFrame == true) setState(() => _hasError = true);
+        },
+        onSslAuthError: (SslAuthError error) async => error.proceed(),
+      ))
       ..loadRequest(Uri.parse(widget.service.url));
   }
+
+  String jsonEncodeStr(String s) =>
+      '"${s.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"';
 
   @override
   Widget build(BuildContext context) {
@@ -73,13 +102,18 @@ class _WebViewScreenState extends State<WebViewScreen> {
         backgroundColor: const Color(0xFF0F0F2A),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () async {
+            if (await _controller.canGoBack()) {
+              _controller.goBack();
+            } else {
+              if (mounted) Navigator.pop(context);
+            }
+          },
         ),
         title: Row(
           children: [
             Container(
-              width: 28,
-              height: 28,
+              width: 28, height: 28,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: color.withValues(alpha: 0.15),
@@ -98,9 +132,19 @@ class _WebViewScreenState extends State<WebViewScreen> {
           ],
         ),
         actions: [
+          // Bouton login manuel (apparaît si auto-login n'a pas marché)
+          if (_showLoginButton)
+            IconButton(
+              icon: const Icon(Icons.login_rounded, size: 20, color: Color(0xFF00D4FF)),
+              onPressed: _triggerManualLogin,
+              tooltip: 'Se connecter',
+            ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, size: 20),
-            onPressed: () => _controller.reload(),
+            onPressed: () {
+              setState(() => _loginAttempts = 0);
+              _controller.reload();
+            },
             tooltip: 'Actualiser',
           ),
           IconButton(
@@ -118,13 +162,63 @@ class _WebViewScreenState extends State<WebViewScreen> {
             child: LinearProgressIndicator(
               value: _progress,
               backgroundColor: Colors.white10,
-              color: color,
-              minHeight: 2,
+              color: color, minHeight: 2,
             ),
           ),
         ),
       ),
-      body: _hasError ? _buildErrorPage() : WebViewWidget(controller: _controller),
+      body: Stack(
+        children: [
+          _hasError ? _buildErrorPage() : WebViewWidget(controller: _controller),
+          // Banner si le login manuel est disponible
+          if (_showLoginButton)
+            Positioned(
+              bottom: 16, left: 16, right: 16,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F0F2A),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF00D4FF).withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline_rounded,
+                        size: 16, color: Color(0xFF00D4FF)),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Auto-login en attente…',
+                        style: TextStyle(color: Colors.white60, fontSize: 12),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _triggerManualLogin,
+                      child: const Text('Se connecter',
+                          style: TextStyle(
+                            color: Color(0xFF00D4FF),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          )),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _triggerManualLogin() async {
+    setState(() {
+      _showLoginButton = false;
+      _loginAttempts = 0;
+    });
+    await autoLoginService.performLogin(
+      service: widget.service,
+      controller: _controller,
+      currentUrl: _currentUrl,
     );
   }
 
@@ -141,10 +235,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
             Text(
               'Impossible de joindre\n${widget.service.name}',
               style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
+                color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
@@ -154,19 +245,12 @@ class _WebViewScreenState extends State<WebViewScreen> {
                 color: Colors.white.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.vpn_key_rounded, size: 14, color: Colors.white38),
-                  SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      'Vérifiez que Tailscale est actif et l\'URL configurée',
-                      style: TextStyle(color: Colors.white38, fontSize: 12),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ],
+              child: Text(
+                widget.service.url.isEmpty
+                    ? 'URL non configurée — allez dans Settings'
+                    : 'Vérifiez l\'URL et votre connexion réseau',
+                style: const TextStyle(color: Colors.white38, fontSize: 12),
+                textAlign: TextAlign.center,
               ),
             ),
             const SizedBox(height: 28),
@@ -188,6 +272,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   }
 
   Future<void> _openExternal() async {
+    if (widget.service.url.isEmpty) return;
     final url = Uri.parse(widget.service.url);
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);

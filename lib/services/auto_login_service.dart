@@ -1,20 +1,20 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:webview_flutter/webview_flutter.dart';
 import '../models/service.dart';
 import 'credential_service.dart';
 
 class AutoLoginService {
+  // JS qui détecte ET remplit le formulaire — appelé sur chaque page
+  // La détection se fait côté JS (cherche input[type=password])
+  // pas côté Dart (URL) pour éviter les faux négatifs
   Future<void> performLogin({
     required ServiceModel service,
     required WebViewController controller,
     required String currentUrl,
   }) async {
     if (service.autoLoginMethod == AutoLoginMethod.none) return;
-
-    // Ne tenter l'auto-login que si on est sur une page de login
-    final isLoginPage = _isLoginPage(currentUrl);
-    if (!isLoginPage && service.autoLoginMethod == AutoLoginMethod.jsInjection) return;
 
     switch (service.autoLoginMethod) {
       case AutoLoginMethod.jsInjection:
@@ -28,21 +28,7 @@ class AutoLoginService {
     }
   }
 
-  bool _isLoginPage(String url) {
-    final lower = url.toLowerCase();
-    return lower.contains('login') ||
-        lower.contains('signin') ||
-        lower.contains('auth') ||
-        lower.contains('connexion') ||
-        lower.contains('sign-in') ||
-        lower.contains('log-in') ||
-        lower.contains('/ui/#/login') ||    // Proxmox
-        lower.contains('/?next=') ||         // Paperless, Mealie
-        lower.endsWith('/') ||               // Racine = souvent login si pas auth
-        lower.contains('welcome');
-  }
-
-  // ── JS Injection — sélecteurs spécifiques par service ─────────────────
+  // ── JS Injection ───────────────────────────────────────────────────────
 
   Future<void> _jsInjectionLogin(
       ServiceModel service, WebViewController controller) async {
@@ -53,68 +39,99 @@ class AutoLoginService {
 
     final jsUser = jsonEncode(username);
     final jsPass = jsonEncode(password);
-
-    // Sélecteurs spécifiques selon le service
     final selectors = _getSelectors(service.id);
 
-    await Future.delayed(const Duration(milliseconds: 1800));
-    await controller.runJavaScript('''
-      (function() {
-        try {
-          // Sélecteurs spécifiques au service
-          var userSel = ${jsonEncode(selectors['user'])};
-          var passSel = ${jsonEncode(selectors['pass'])};
-          var submitSel = ${jsonEncode(selectors['submit'])};
-
-          function setVal(el, val) {
-            var nativeInput = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
-            if (nativeInput) {
-              nativeInput.set.call(el, val);
+    // Tenter plusieurs fois avec délais croissants
+    for (final delay in [1200, 2500, 4000]) {
+      await Future.delayed(Duration(milliseconds: delay));
+      final result = await controller.runJavaScriptReturningResult('''
+        (function() {
+          // Vérifier qu'il y a un champ password (= page de login)
+          var passField = document.querySelector(${jsonEncode(selectors['pass'])}) ||
+                          document.querySelector('input[type="password"]');
+          if (!passField) return 'no_password_field';
+          
+          function setNativeVal(el, val) {
+            var proto = Object.getOwnPropertyDescriptor(
+              window.HTMLInputElement.prototype, 'value');
+            if (proto && proto.set) {
+              proto.set.call(el, val);
             } else {
               el.value = val;
             }
-            el.dispatchEvent(new Event('input', {bubbles: true}));
-            el.dispatchEvent(new Event('change', {bubbles: true}));
+            ['input','change','keyup','keydown'].forEach(function(e) {
+              el.dispatchEvent(new Event(e, {bubbles: true}));
+            });
           }
 
-          var userField = document.querySelector(userSel);
-          var passField = document.querySelector(passSel);
+          var userField = document.querySelector(${jsonEncode(selectors['user'])}) ||
+              document.querySelector([
+                'input[name="username"]',
+                'input[name="email"]',
+                'input[type="email"]',
+                'input[type="text"]',
+                'input[autocomplete="username"]',
+                'input[autocomplete="email"]',
+                'input[id*="user"]',
+                'input[id*="login"]',
+                'input[id*="email"]'
+              ].join(','));
 
-          if (!userField || !passField) {
-            // Fallback générique
-            userField = document.querySelector(
-              'input[type="text"], input[name="username"], input[id*="user"], input[autocomplete="username"], input[name="email"]'
-            );
-            passField = document.querySelector('input[type="password"]');
+          if (!userField) return 'no_user_field';
+
+          setNativeVal(userField, $jsUser);
+          setNativeVal(passField, $jsPass);
+
+          // Focus sur passField puis simule Enter
+          passField.focus();
+
+          // Chercher le bouton submit
+          var btn = document.querySelector(${jsonEncode(selectors['submit'])}) ||
+              document.querySelector([
+                'button[type="submit"]',
+                'input[type="submit"]',
+                'button.login-button',
+                'button.btn-primary',
+                'button.btn-login',
+                'button[class*="submit"]',
+                'button[class*="login"]',
+                'button[class*="sign"]',
+                '[role="button"][class*="submit"]',
+                '[role="button"][class*="login"]'
+              ].join(','));
+
+          if (btn) {
+            setTimeout(function() { btn.click(); }, 300);
+            return 'clicked_button';
           }
 
-          if (userField && passField) {
-            setVal(userField, $jsUser);
-            setVal(passField, $jsPass);
-
+          // Fallback: submit le form ou Enter
+          var form = passField.closest('form');
+          if (form) {
             setTimeout(function() {
-              var btn = document.querySelector(submitSel);
-              if (!btn) {
-                btn = document.querySelector(
-                  'button[type="submit"], input[type="submit"], button.login, button.signin, button.btn-primary'
-                );
-              }
-              if (btn) {
-                btn.click();
-              } else {
-                var form = passField.closest('form');
-                if (form) form.dispatchEvent(new Event('submit', {bubbles: true}));
-              }
+              form.dispatchEvent(new Event('submit', {bubbles: true, cancelable: true}));
             }, 300);
+            return 'submitted_form';
           }
-        } catch(e) {
-          console.log('AutoLogin error:', e);
-        }
-      })();
-    ''');
+
+          // Dernier recours: KeyboardEvent Enter
+          setTimeout(function() {
+            passField.dispatchEvent(new KeyboardEvent('keydown', {
+              key: 'Enter', code: 'Enter', keyCode: 13,
+              which: 13, bubbles: true
+            }));
+          }, 300);
+          return 'pressed_enter';
+        })();
+      ''');
+
+      // Si on a trouvé et rempli → arrêter les retries
+      final res = result.toString().replaceAll('"', '');
+      if (res != 'no_password_field' && res != 'no_user_field') break;
+    }
   }
 
-  /// Sélecteurs CSS par service pour cibler précisément les formulaires
+  /// Sélecteurs CSS spécifiques par service
   Map<String, String> _getSelectors(String serviceId) {
     switch (serviceId) {
       case 'proxmox':
@@ -125,14 +142,14 @@ class AutoLoginService {
         };
       case 'mealie':
         return {
-          'user': 'input[id="username"], input[name="username"]',
+          'user': 'input[id="username"]',
           'pass': 'input[type="password"]',
           'submit': 'button[type="submit"]',
         };
       case 'paperless':
         return {
-          'user': 'input[name="username"], input[id="id_username"]',
-          'pass': 'input[name="password"], input[id="id_password"]',
+          'user': 'input[id="id_username"], input[name="username"]',
+          'pass': 'input[id="id_password"], input[name="password"]',
           'submit': 'input[type="submit"], button[type="submit"]',
         };
       case 'kavita':
@@ -149,13 +166,13 @@ class AutoLoginService {
         };
       case 'uptimekuma':
         return {
-          'user': 'input[placeholder*="username" i], input[id="username"]',
+          'user': 'input[id="username"]',
           'pass': 'input[type="password"]',
           'submit': 'button[type="submit"]',
         };
       case 'beszel':
         return {
-          'user': 'input[name="identity"], input[autocomplete="email"]',
+          'user': 'input[name="identity"]',
           'pass': 'input[name="password"]',
           'submit': 'button[type="submit"]',
         };
@@ -171,17 +188,15 @@ class AutoLoginService {
           'pass': 'input[name="password"]',
           'submit': 'button[aria-label="Login button"]',
         };
-      case 'homepage':
-      case 'jotty':
       case 'vaultwarden':
         return {
-          'user': 'input[type="email"], input[name="email"]',
+          'user': 'input[type="email"]',
           'pass': 'input[type="password"]',
           'submit': 'button[type="submit"]',
         };
       default:
         return {
-          'user': 'input[type="text"], input[name="username"], input[autocomplete="username"]',
+          'user': 'input[type="text"]',
           'pass': 'input[type="password"]',
           'submit': 'button[type="submit"]',
         };
@@ -218,7 +233,8 @@ class AutoLoginService {
               'MediaBrowser Client="HomeLab", Device="Android", DeviceId="homelab-dash", Version="1.0"',
         },
         body: jsonEncode({'Username': username, 'Pw': password}),
-      );
+      ).timeout(const Duration(seconds: 10));
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final token = data['AccessToken'] as String?;
@@ -230,7 +246,8 @@ class AutoLoginService {
             ]
           });
           await controller.runJavaScript(
-              'localStorage.setItem("jellyfin_credentials", $jsCredentials);');
+              'localStorage.setItem("jellyfin_credentials", $jsCredentials);'
+              'window.location.reload();');
         }
       }
     } catch (_) {}
