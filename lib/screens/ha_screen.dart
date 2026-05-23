@@ -395,24 +395,28 @@ class HaScreen extends ConsumerWidget {
         children: [
           SizedBox(
             height: 110,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
+            child: GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 0.95,
+              ),
               itemCount: actions.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
               itemBuilder: (_, i) {
-                final (entityId, label, icon, color) = actions[i];
-                final entity = s.entity(entityId);
+                final (entityId, label, icon, color, isOpen) = actions[i];
                 return HaActionButton(
                   label: label,
                   icon: icon,
-                  isOn: entity?.isOn ?? false,
-                  isUnavailable: entity?.isUnavailable ?? true,
-                  activeColor: color,
+                  isOn: isOpen,
+                  isUnavailable: false,
+                  activeColor: isOpen ? const Color(0xFFFF4D6D) : color,
                   onTap: () => ref.read(haProvider.notifier).toggle(entityId),
                 );
               },
             ),
-          ),
           const SizedBox(height: 10),
           // Capteurs d'ouverture
           Wrap(

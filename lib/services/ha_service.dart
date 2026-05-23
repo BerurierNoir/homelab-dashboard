@@ -145,7 +145,7 @@ class HaService {
   /// Appel d'un webhook HA (pas d'auth requise)
   Future<void> callWebhook(String webhookId) async {
     await http.post(
-      Uri.parse('${baseUrl}/api/webhook/${webhookId}'),
+      Uri.parse('$baseUrl/api/webhook/$webhookId'),
       headers: {'Content-Type': 'application/json'},
       body: '{}',
     ).timeout(const Duration(seconds: 8));

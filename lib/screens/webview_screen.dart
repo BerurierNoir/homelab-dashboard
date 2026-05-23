@@ -72,14 +72,14 @@ class _WebViewScreenState extends State<WebViewScreen> {
           }
           // Afficher bouton login manuel si toujours sur une page avec password field
           await Future.delayed(const Duration(seconds: 3));
-          if (mounted) {
-            final hasLoginForm = await _controller.runJavaScriptReturningResult(
-              'document.querySelector("input[type=password]") !== null'
-            );
-            setState(() {
-              _showLoginButton = hasLoginForm.toString() == 'true';
-            });
-          }
+          if (!mounted) return;
+          final hasLoginForm = await _controller.runJavaScriptReturningResult(
+            'document.querySelector("input[type=password]") !== null'
+          );
+          if (!mounted) return;
+          setState(() {
+            _showLoginButton = hasLoginForm.toString() == 'true';
+          });
         },
         onWebResourceError: (err) {
           if (err.isForMainFrame == true) setState(() => _hasError = true);
