@@ -331,6 +331,8 @@ class HaScreen extends ConsumerWidget {
                 const SizedBox(height: 4),
                 Text(
                   condition?.state ?? '',
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 13,
@@ -762,6 +764,8 @@ class _PersonCard extends StatelessWidget {
               children: [
                 Text(
                   entity.friendlyName,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 13,
@@ -939,6 +943,8 @@ class _MediaCard extends StatelessWidget {
               children: [
                 Text(
                   entity.friendlyName,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 13,

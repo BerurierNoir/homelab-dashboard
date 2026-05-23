@@ -92,6 +92,10 @@ class _HaCameraCardState extends State<HaCameraCard> {
               _imageBytes!,
               fit: BoxFit.cover,
               gaplessPlayback: true,
+              errorBuilder: (_, __, ___) => const Center(
+                child: Icon(Icons.broken_image_rounded,
+                    color: Colors.white24, size: 40),
+              ),
             )
           else if (_loading)
             const Center(

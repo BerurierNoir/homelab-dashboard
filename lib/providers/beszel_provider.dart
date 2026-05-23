@@ -1,3 +1,4 @@
+import '../utils/url_utils.dart';
 import 'dart:async' show Timer, TimeoutException;
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -109,14 +110,14 @@ class BeszelNotifier extends StateNotifier<BeszelState> {
     if (password == null) return null;
 
     // Nettoyer l'URL (supprimer le slash final)
-    final cleanUrl = url.replaceAll(RegExp(r'/+$'), '');
+    final cleanedUrl = cleanUrl(url);
 
     // Beszel embeds PocketBase — try all three auth endpoints depending on
     // PocketBase version and whether the account is a user, admin, or superuser.
     final endpoints = [
-      '$cleanUrl/api/collections/users/auth-with-password',   // regular user
-      '$cleanUrl/api/admins/auth-with-password',               // PocketBase admin < 0.23
-      '$cleanUrl/api/collections/_superusers/auth-with-password', // PocketBase >= 0.23
+      '$cleanedUrl/api/collections/users/auth-with-password',   // regular user
+      '$cleanedUrl/api/admins/auth-with-password',               // PocketBase admin < 0.23
+      '$cleanedUrl/api/collections/_superusers/auth-with-password', // PocketBase >= 0.23
     ];
 
     for (final endpoint in endpoints) {
@@ -287,7 +288,7 @@ class BeszelNotifier extends StateNotifier<BeszelState> {
   Future<void> selectSystem(
       String url, String systemId, String systemName) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kUrl, url.replaceAll(RegExp(r'/+$'), ''));
+    await prefs.setString(_kUrl, cleanUrl(url));
     await prefs.setString(_kSystemId, systemId);
     await prefs.setString(_kSystemName, systemName);
 

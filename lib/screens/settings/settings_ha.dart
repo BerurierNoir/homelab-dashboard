@@ -1,3 +1,4 @@
+import '../../utils/url_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/ha_provider.dart';
@@ -40,7 +41,7 @@ class _SettingsHaScreenState extends ConsumerState<SettingsHaScreen> {
       _testSuccess = null;
     });
     final svc = HaService(
-      baseUrl: _cleanUrl(_urlCtrl.text),
+      baseUrl: cleanUrl(_urlCtrl.text),
       token: _tokenCtrl.text.trim(),
     );
     final error = await svc.testConnectionDetailed();
@@ -53,23 +54,9 @@ class _SettingsHaScreenState extends ConsumerState<SettingsHaScreen> {
     });
   }
 
-  String _cleanUrl(String raw) {
-    var url = raw.trim();
-    // Supprimer le slash final
-    url = url.replaceAll(RegExp(r'/+$'), '');
-    // Ajouter https:// si pas de schéma
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = 'https://$url';
-    }
-    // Nabu Casa : forcer https
-    if (url.contains('nabu.casa') && url.startsWith('http://')) {
-      url = url.replaceFirst('http://', 'https://');
-    }
-    return url;
-  }
 
   Future<void> _save() async {
-    final cleanUrl = _cleanUrl(_urlCtrl.text);
+    final cleanUrl = cleanUrl(_urlCtrl.text);
     _urlCtrl.text = cleanUrl; // Mettre à jour le champ
     await ref.read(haConfigProvider.notifier).save(
           url: cleanUrl,
