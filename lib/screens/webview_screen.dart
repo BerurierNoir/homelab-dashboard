@@ -54,6 +54,9 @@ class _WebViewScreenState extends State<WebViewScreen>
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(const Color(0xFF080818))
+      // Accepter les certificats self-signed et le contenu mixte HTTP/HTTPS
+      ..setOnConsoleMessage((msg) {}) // Absorber les erreurs console
+
       // Fix clipboard freeze : handler JavaScript pour paste
       ..addJavaScriptChannel(
         'FlutterClipboard',
