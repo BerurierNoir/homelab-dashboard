@@ -26,10 +26,6 @@ class _SettingsBackupScreenState extends ConsumerState<SettingsBackupScreen> {
   bool _importing = false;
 
   Future<void> _export() async {
-    // Choisir entre sauvegarde locale ou partage
-    final choice = await _showExportChoiceDialog();
-    if (choice == null) return;
-
     final passphrase = await _showPassphraseDialog(confirm: true);
     if (passphrase == null) return;
 
@@ -39,36 +35,15 @@ class _SettingsBackupScreenState extends ConsumerState<SettingsBackupScreen> {
       final date = DateTime.now().toIso8601String().substring(0, 10);
       final fileName = 'homelab-backup-$date.homelabbackup';
 
-      if (choice == 'local') {
-        // Sauvegarder dans le dossier Téléchargements
-        Directory? saveDir;
-        if (Platform.isAndroid) {
-          saveDir = Directory('/storage/emulated/0/Download');
-          if (!await saveDir.exists()) {
-            saveDir = await getExternalStorageDirectory();
-          }
-        }
-        saveDir ??= await getApplicationDocumentsDirectory();
-
-        final file = File('${saveDir.path}/$fileName');
-        await file.writeAsString(backupContent);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Sauvegardé dans ${file.path}'),
-              backgroundColor: const Color(0xFF5CDD8B),
-              duration: const Duration(seconds: 5),
-            ),
-          );
-        }
-      } else {
-        // Partage via Share sheet
-        final dir = await getTemporaryDirectory();
-        final file = File('${dir.path}/$fileName');
-        await file.writeAsString(backupContent);
+      // Utiliser le dossier temporaire + share sheet (fonctionne sans permission)
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/$fileName');
+      await file.writeAsString(backupContent);
+      if (mounted) {
         await Share.shareXFiles(
           [XFile(file.path)],
           subject: 'HomeLab Backup $date',
+          text: 'Sauvegardez ce fichier sur Pydio, clé USB, Drive...',
         );
       }
     } catch (e) {
