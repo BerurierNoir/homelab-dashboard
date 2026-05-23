@@ -158,18 +158,21 @@ class HaNotifier extends Notifier<HaState> {
 
   Future<void> toggle(String entityId) async {
     if (_service == null) return;
-    // Optimistic update
-    final current = state.entities[entityId];
-    if (current != null) {
-      final newState = current.isOn ? 'off' : 'on';
-      final updated = Map<String, HaEntity>.from(state.entities);
-      updated[entityId] = current.copyWith(state: newState);
-      state = state.copyWith(entities: updated);
+    final domain = entityId.split('.').first;
+    // Optimistic update (sauf script/scene/automation/webhook)
+    final noOptimistic = ['script', 'scene', 'automation', 'button'];
+    if (!noOptimistic.contains(domain)) {
+      final current = state.entities[entityId];
+      if (current != null) {
+        final newState = current.isOn ? 'off' : 'on';
+        final updated = Map<String, HaEntity>.from(state.entities);
+        updated[entityId] = current.copyWith(state: newState);
+        state = state.copyWith(entities: updated);
+      }
     }
     try {
-      await _service!.toggle(entityId);
+      await _service!.smartCall(entityId);
     } catch (_) {
-      // Rollback si erreur
       await _fetchAll();
     }
   }
@@ -182,6 +185,13 @@ class HaNotifier extends Notifier<HaState> {
         service: service,
         entityId: entityId,
       );
+    } catch (_) {}
+  }
+
+  Future<void> callWebhook(String webhookId) async {
+    if (_service == null) return;
+    try {
+      await _service!.callWebhook(webhookId);
     } catch (_) {}
   }
 

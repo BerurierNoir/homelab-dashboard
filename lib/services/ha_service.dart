@@ -110,10 +110,49 @@ class HaService {
         .timeout(const Duration(seconds: 8));
   }
 
-  Future<void> toggle(String entityId) async {
+  /// Appel intelligent selon le domaine de l'entité
+  Future<void> smartCall(String entityId) async {
     final domain = entityId.split('.').first;
-    final svc = domain == 'cover' ? 'toggle' : 'toggle';
-    await callService(domain: domain, service: svc, entityId: entityId);
+    final String service;
+    switch (domain) {
+      case 'script':
+        service = 'turn_on';
+        break;
+      case 'scene':
+        service = 'turn_on';
+        break;
+      case 'automation':
+        service = 'trigger';
+        break;
+      case 'button':
+        service = 'press';
+        break;
+      case 'input_button':
+        service = 'press';
+        break;
+      case 'cover':
+      case 'switch':
+      case 'light':
+      case 'fan':
+      case 'input_boolean':
+      case 'media_player':
+      default:
+        service = 'toggle';
+    }
+    await callService(domain: domain, service: service, entityId: entityId);
+  }
+
+  /// Appel d'un webhook HA (pas d'auth requise)
+  Future<void> callWebhook(String webhookId) async {
+    await http.post(
+      Uri.parse('${baseUrl}/api/webhook/${webhookId}'),
+      headers: {'Content-Type': 'application/json'},
+      body: '{}',
+    ).timeout(const Duration(seconds: 8));
+  }
+
+  Future<void> toggle(String entityId) async {
+    await smartCall(entityId);
   }
 
   Future<void> turnOn(String entityId) async {
