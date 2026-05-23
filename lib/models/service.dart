@@ -223,7 +223,7 @@ const List<ServiceModel> kDefaultServices = [
     defaultUrl: '',
     icon: Icons.monitor,
     color: Color(0xFF00BFA5),
-    autoLoginMethod: AutoLoginMethod.jsInjection,
+    autoLoginMethod: AutoLoginMethod.apiToken,
   ),
   ServiceModel(
     id: 'immich_ext',

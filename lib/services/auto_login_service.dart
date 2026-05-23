@@ -213,6 +213,8 @@ class AutoLoginService {
       await _jellyfinLogin(service, controller);
     } else if (service.id == 'homeassistant') {
       await _homeAssistantLogin(service, controller);
+    } else if (service.id == 'beszel') {
+      await _beszelLogin(service, controller);
     }
   }
 
@@ -272,6 +274,50 @@ class AutoLoginService {
     ''');
     await controller.reload();
   }
+  // ── Beszel — PocketBase API auth ────────────────────────────────────────
+
+  Future<void> _beszelLogin(
+      ServiceModel service, WebViewController controller) async {
+    final username = await credentialService.getUsername(service.id);
+    final password = await credentialService.getPassword(service.id);
+    if (username == null || password == null) return;
+    if (username.isEmpty || password.isEmpty) return;
+
+    try {
+      // PocketBase auth endpoint
+      final uri = Uri.parse('${service.url}/api/collections/users/auth-with-password');
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'identity': username, 'password': password}),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final token = data['token'] as String?;
+        final record = jsonEncode(data);
+        if (token != null) {
+          // Injecter le token dans le localStorage de PocketBase
+          await Future.delayed(const Duration(milliseconds: 1500));
+          await controller.runJavaScript('''
+            (function() {
+              try {
+                localStorage.setItem('pocketbase_auth', JSON.stringify($record));
+                window.location.href = '/';
+              } catch(e) { console.log('Beszel auth error:', e); }
+            })();
+          ''');
+        }
+      } else {
+        // Fallback JS injection si API échoue
+        await _jsInjectionLogin(service, controller);
+      }
+    } catch (e) {
+      // Fallback JS injection
+      await _jsInjectionLogin(service, controller);
+    }
+  }
+
 }
 
 final autoLoginService = AutoLoginService();
