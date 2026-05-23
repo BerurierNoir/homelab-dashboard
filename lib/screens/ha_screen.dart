@@ -420,9 +420,9 @@ class HaScreen extends ConsumerWidget {
           const SizedBox(height: 10),
           // Capteurs d'ouverture
           Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: capteurs.map((c) {
+            spacing: 8,
+            runSpacing: 8,
+            children: capteurs.map((c) {
           final (entityId, label) = c;
           final entity = s.entity(entityId);
           final isOpen = entity?.isOn ?? false;
