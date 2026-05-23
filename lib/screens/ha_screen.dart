@@ -393,66 +393,71 @@ class HaScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            height: 110,
-            child: GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 0.95,
-              ),
-              itemCount: actions.length,
-              itemBuilder: (_, i) {
-                final (entityId, label, icon, color, isOpen) = actions[i];
-                return HaActionButton(
-                  label: label,
-                  icon: icon,
-                  isOn: isOpen,
-                  isUnavailable: false,
-                  activeColor: isOpen ? const Color(0xFFFF4D6D) : color,
-                  onTap: () => ref.read(haProvider.notifier).toggle(entityId),
-                );
-              },
+          // Grille 3 colonnes
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 0.95,
             ),
+            itemCount: actions.length,
+            itemBuilder: (_, i) {
+              final (entityId, label, icon, color, isOpen) = actions[i];
+              return HaActionButton(
+                label: label,
+                icon: icon,
+                isOn: isOpen,
+                isUnavailable: false,
+                activeColor: isOpen ? const Color(0xFFFF4D6D) : color,
+                onTap: () => ref.read(haProvider.notifier).toggle(entityId),
+              );
+            },
+          ),
           const SizedBox(height: 10),
           // Capteurs d'ouverture
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: capteurs.map((c) {
-          final (entityId, label) = c;
-          final entity = s.entity(entityId);
-          final isOpen = entity?.isOn ?? false;
-          final color = isOpen ? const Color(0xFFFF4D6D) : const Color(0xFF5CDD8B);
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              color: color.withValues(alpha: 0.08),
-              border: Border.all(color: color.withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  isOpen ? Icons.lock_open_rounded : Icons.lock_rounded,
-                  color: color, size: 13,
+              final (entityId, label) = c;
+              final entity = s.entity(entityId);
+              final isOpen = entity?.isOn ?? false;
+              final color = isOpen
+                  ? const Color(0xFFFF4D6D)
+                  : const Color(0xFF5CDD8B);
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: color.withValues(alpha: 0.08),
+                  border: Border.all(color: color.withValues(alpha: 0.3)),
                 ),
-                const SizedBox(width: 5),
-                Text(label,
-                  style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
-                const SizedBox(width: 4),
-                Text(
-                  isOpen ? 'Ouvert' : 'Fermé',
-                  style: TextStyle(color: color.withValues(alpha: 0.7), fontSize: 10),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isOpen ? Icons.lock_open_rounded : Icons.lock_rounded,
+                      color: color, size: 13,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(label,
+                        style: TextStyle(
+                            color: color,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 4),
+                    Text(
+                      isOpen ? 'Ouvert' : 'Fermé',
+                      style: TextStyle(
+                          color: color.withValues(alpha: 0.7), fontSize: 10),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          );
-        }).toList(),
+              );
+            }).toList(),
           ),
         ],
       ),

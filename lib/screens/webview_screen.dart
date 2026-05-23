@@ -103,10 +103,11 @@ class _WebViewScreenState extends State<WebViewScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
           onPressed: () async {
+            final nav = Navigator.of(context);
             if (await _controller.canGoBack()) {
               _controller.goBack();
             } else {
-              if (mounted) Navigator.pop(context);
+              nav.pop();
             }
           },
         ),
