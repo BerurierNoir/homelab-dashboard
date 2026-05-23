@@ -1,5 +1,6 @@
 import '../utils/url_utils.dart';
 import 'dart:async';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -91,13 +92,14 @@ class HaState {
   }
 }
 
-class HaNotifier extends Notifier<HaState> {
+class HaNotifier extends Notifier<HaState> with WidgetsBindingObserver {
   HaService? _service;
   StreamSubscription<Map<String, dynamic>>? _wsSub;
   Timer? _refreshTimer;
 
   @override
   HaState build() {
+    WidgetsBinding.instance.addObserver(this);
     ref.listen<HaConfig>(haConfigProvider, (_, config) {
       if (config.isConfigured) _init(config);
     });
@@ -106,10 +108,26 @@ class HaNotifier extends Notifier<HaState> {
       Future.microtask(() => _init(config));
     }
     ref.onDispose(() {
+      WidgetsBinding.instance.removeObserver(this);
       _wsSub?.cancel();
       _refreshTimer?.cancel();
     });
     return const HaState(isLoading: true);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
+    if (lifecycle == AppLifecycleState.resumed) {
+      // Rafraîchir les états et reconnecter le WebSocket au retour
+      _fetchAll();
+      _subscribeWs();
+    } else if (lifecycle == AppLifecycleState.paused) {
+      // Couper le WebSocket en arrière-plan pour éviter le freeze
+      _wsSub?.cancel();
+      _wsSub = null;
+      _refreshTimer?.cancel();
+      _refreshTimer = null;
+    }
   }
 
   Future<void> _init(HaConfig config) async {

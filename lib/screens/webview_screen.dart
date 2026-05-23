@@ -13,7 +13,8 @@ class WebViewScreen extends StatefulWidget {
   State<WebViewScreen> createState() => _WebViewScreenState();
 }
 
-class _WebViewScreenState extends State<WebViewScreen> {
+class _WebViewScreenState extends State<WebViewScreen>
+    with WidgetsBindingObserver {
   late final WebViewController _controller;
   double _progress = 0;
   bool _hasError = false;
@@ -24,7 +25,29 @@ class _WebViewScreenState extends State<WebViewScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initWebView();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // WebView : pause/resume pour éviter le freeze au retour foreground
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+        _controller.runJavaScript(
+          'if(document.hidden !== undefined) { '
+          'document.dispatchEvent(new Event("visibilitychange")); }');
+        break;
+      case AppLifecycleState.resumed:
+        _controller.runJavaScript(
+          'if(document.hidden !== undefined) { '
+          'document.dispatchEvent(new Event("visibilitychange")); }'
+          'window.dispatchEvent(new Event("focus"));');
+        break;
+      default:
+        break;
+    }
   }
 
   void _initWebView() {
@@ -91,6 +114,12 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
   String jsonEncodeStr(String s) =>
       '"${s.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"';
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

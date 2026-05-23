@@ -21,7 +21,8 @@ class HaCameraCard extends StatefulWidget {
   State<HaCameraCard> createState() => _HaCameraCardState();
 }
 
-class _HaCameraCardState extends State<HaCameraCard> {
+class _HaCameraCardState extends State<HaCameraCard>
+    with WidgetsBindingObserver {
   Uint8List? _imageBytes;
   bool _loading = true;
   String? _error;
@@ -30,12 +31,34 @@ class _HaCameraCardState extends State<HaCameraCard> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _fetchSnapshot();
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
     _timer = Timer.periodic(widget.refreshInterval, (_) => _fetchSnapshot());
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
+      // Pause le timer en arrière-plan pour économiser batterie et réseau
+      _timer?.cancel();
+      _timer = null;
+    } else if (state == AppLifecycleState.resumed) {
+      // Reprendre le refresh au retour
+      _fetchSnapshot();
+      _startTimer();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     super.dispose();
   }
