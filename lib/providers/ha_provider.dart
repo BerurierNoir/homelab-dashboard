@@ -47,11 +47,11 @@ class HaConfigNotifier extends Notifier<HaConfig> {
 
   Future<void> save({required String url, required String token}) async {
     final prefs = await SharedPreferences.getInstance();
-    final cleanedUrl = cleanUrl(url);
-    await prefs.setString(_urlKey, cleanUrl);
+    final savedUrl = cleanUrl(url);
+    await prefs.setString(_urlKey, savedUrl);
     // Token stocké en secure storage (chiffré)
     await _secureStorage.write(key: _tokenKey, value: token.trim());
-    state = HaConfig(url: cleanUrl, token: token.trim());
+    state = HaConfig(url: savedUrl, token: token.trim());
   }
 }
 

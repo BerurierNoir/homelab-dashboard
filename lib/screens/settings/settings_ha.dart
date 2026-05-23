@@ -41,7 +41,7 @@ class _SettingsHaScreenState extends ConsumerState<SettingsHaScreen> {
       _testSuccess = null;
     });
     final svc = HaService(
-      baseUrl: cleanUrl(_urlCtrl.text),
+      baseUrl: cleanUrl(_urlCtrl.text.trim()),
       token: _tokenCtrl.text.trim(),
     );
     final error = await svc.testConnectionDetailed();
@@ -56,10 +56,10 @@ class _SettingsHaScreenState extends ConsumerState<SettingsHaScreen> {
 
 
   Future<void> _save() async {
-    final cleanUrl = cleanUrl(_urlCtrl.text);
-    _urlCtrl.text = cleanUrl; // Mettre à jour le champ
+    final savedUrl = cleanUrl(_urlCtrl.text);
+    _urlCtrl.text = savedUrl; // Mettre à jour le champ
     await ref.read(haConfigProvider.notifier).save(
-          url: cleanUrl,
+          url: savedUrl,
           token: _tokenCtrl.text.trim(),
         );
     if (mounted) {
