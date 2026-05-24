@@ -15,7 +15,7 @@ class BackupService {
 
   // All SharedPreferences keys to include in the backup
   static const _prefKeys = [
-    'services_overrides_v2',
+    'services_overrides_v3',
     'network_mode',
     'cameras_v1',
     'shortcuts_v1',
